@@ -6510,13 +6510,11 @@ void xfr_process_load_end_transfer(struct auth_xfer* xfr,
 				/* the zone is gone from the authzones. */
 				lock_basic_unlock(&xfr->lock);
 				auth_chunks_delete(xfr->task_transfer);
-				xfr->task_transfer->chunks_first = NULL;
 				return;
 			}
 		}
 	}
 	auth_chunks_delete(xfr->task_transfer);
-	xfr->task_transfer->chunks_first = NULL;
 
 	if(status) {
 		/* it worked! */
