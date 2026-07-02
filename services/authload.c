@@ -631,6 +631,7 @@ auth_load_thread_delete(struct auth_load_thread* thr)
 		sock_close(thr->commpair[0]);
 	if(thr->commpair[1] != -1)
 		sock_close(thr->commpair[1]);
+	auth_load_task_delete(thr->task);
 	free(thr);
 }
 
@@ -746,7 +747,12 @@ auth_load_thread_attach(struct auth_load_thread* thr, struct worker* worker)
 	 * The commpair[1] element can stay blocking, it is used by the
 	 * auth load thread. The thread needs to wait at these times, when
 	 * it has to check briefly it can use poll. */
+	verbose(VERB_ALGO, "auth_load_thread_attach");
 	fd_set_nonblock(thr->commpair[0]);
+	if(!comm_base_internal(worker->base)) {
+		verbose(VERB_ALGO, "auth load thread: no event base");
+		return 0;
+	}
 	thr->service_event = ub_event_new(comm_base_internal(worker->base),
 		thr->commpair[0], UB_EV_READ | UB_EV_PERSIST,
 		worker_auth_load_service_cb, thr);
@@ -787,6 +793,7 @@ int auth_load_add_task_xfr(struct auth_xfer* xfr, struct worker* worker)
 {
 	struct auth_load_task* task;
 	int can_run = 0;
+	verbose(VERB_ALGO, "auth load add task");
 
 	/* Check auth load count */
 	can_run = 1;
@@ -796,8 +803,10 @@ int auth_load_add_task_xfr(struct auth_xfer* xfr, struct worker* worker)
 	if(!task)
 		return 0;
 	if(can_run) {
+		verbose(VERB_ALGO, "auth load start thread");
 		if(!auth_load_start_thread(task))
 			return 0;
+		verbose(VERB_ALGO, "auth load thread started");
 		return 1;
 	}
 

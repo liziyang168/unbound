@@ -6394,6 +6394,7 @@ process_list_end_transfer(struct auth_xfer* xfr, struct module_env* env)
 			 * is signalled with the result. */
 			/* When it is done, the xfr_process_load_end_transfer
 			 * routine is called. */
+			lock_basic_unlock(&xfr->lock);
 			return;
 		}
 	} else if(xfr_process_chunk_list(xfr, env, &ixfr_fail)) {
@@ -6414,6 +6415,7 @@ xfr_process_loaded_transfer(struct auth_xfer* xfr, struct module_env* env,
 	int* gone)
 {
 	struct auth_zone* z = NULL;
+	verbose(VERB_ALGO, "xfr_process_loaded_transfer");
 	lock_basic_unlock(&xfr->lock);
 	if(!xfr_process_reacquire_locks(xfr, env, &z)) {
 		/* the zone is gone, ignore xfr results */
@@ -6422,6 +6424,7 @@ xfr_process_loaded_transfer(struct auth_xfer* xfr, struct module_env* env,
 	}
 	/* holding xfr and z locks */
 
+	verbose(VERB_ALGO, "xfr_process_loaded_transfer: num_ixfrs");
 	if(xfr->task_transfer->master->http) {
 		xfr->num_ixfrs = 0;
 		xfr->have_zone = 0;
@@ -6436,6 +6439,7 @@ xfr_process_loaded_transfer(struct auth_xfer* xfr, struct module_env* env,
 		xfr->serial = 0;
 	}
 
+	verbose(VERB_ALGO, "xfr_process_loaded_transfer: find_soa");
 	xfr->zone_expired = 0;
 	z->zone_expired = 0;
 	if(!xfr_find_soa(z, xfr)) {
@@ -6450,6 +6454,7 @@ xfr_process_loaded_transfer(struct auth_xfer* xfr, struct module_env* env,
 	/* release xfr lock while verifying zonemd because it may have
 	 * to spawn lookups in the state machines */
 	lock_basic_unlock(&xfr->lock);
+	verbose(VERB_ALGO, "xfr_process_loaded_transfer: verify_zonemd");
 	/* holding z lock */
 	auth_zone_verify_zonemd(z, env, &env->mesh->mods, NULL, 0, 0);
 	if(z->zone_expired) {
@@ -6479,6 +6484,7 @@ xfr_process_loaded_transfer(struct auth_xfer* xfr, struct module_env* env,
 	}
 	/* holding xfr and z locks */
 
+	verbose(VERB_ALGO, "xfr_process_loaded_transfer: lease");
 	if(xfr->have_zone)
 		xfr->lease_time = *env->now;
 	/* unlock */
@@ -6490,6 +6496,7 @@ xfr_process_loaded_transfer(struct auth_xfer* xfr, struct module_env* env,
 		verbose(VERB_QUERY, "auth zone %s updated to serial %u", zname,
 			(unsigned)xfr->serial);
 	}
+	verbose(VERB_ALGO, "xfr_process_loaded_transfer: write after update");
 	/* see if we need to write to a zonefile */
 	xfr_write_after_update(xfr, env);
 
@@ -6501,6 +6508,7 @@ void xfr_process_load_end_transfer(struct auth_xfer* xfr,
 	struct auth_chunk* chunk_list)
 {
 	/* Chunks are put here for the auth zone write for the http case. */
+	verbose(VERB_ALGO, "xfr_process_load_end_transfer");
 	xfr->task_transfer->chunks_first = chunk_list;
 	if(status) {
 		int gone = 0;
@@ -6514,14 +6522,17 @@ void xfr_process_load_end_transfer(struct auth_xfer* xfr,
 			}
 		}
 	}
+	verbose(VERB_ALGO, "xfr_process_load_end_transfer: chunks delete");
 	auth_chunks_delete(xfr->task_transfer);
 
 	if(status) {
 		/* it worked! */
+		verbose(VERB_ALGO, "xfr_process_load_end_transfer: success");
 		xfr_process_transfer_success(xfr, env);
 		return;
 	}
 	/* The transfer failed */
+	verbose(VERB_ALGO, "xfr_process_load_end_transfer: failed");
 	xfr_process_transfer_failed(xfr, env, ixfr_fail);
 }
 
