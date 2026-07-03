@@ -409,8 +409,10 @@ rrset_append_copy(struct auth_data* domain, struct auth_rrset* rrset,
 	s->type = rrset->type;
 	s->data = (struct packed_rrset_data*)memdup(rrset->data,
 		packed_rrset_sizeof(rrset->data));
-	if(!s->data)
+	if(!s->data) {
+		free(s);
 		return 0;
+	}
 	packed_rrset_ptr_fixup(s->data);
 	if(!*last)
 		domain->rrsets = s;
