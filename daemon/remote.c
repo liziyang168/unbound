@@ -6173,6 +6173,7 @@ fr_atomic_copy_cfg(struct config_file* oldcfg, struct config_file* cfg,
 	COPY_VAR_ptr(acls);
 	COPY_VAR_int(donotquery_localhost);
 	COPY_VAR_ptr(tcp_connection_limits);
+	COPY_VAR_int(auth_task_threads);
 	COPY_VAR_int(harden_short_bufsize);
 	COPY_VAR_int(harden_large_queries);
 	COPY_VAR_int(harden_glue);

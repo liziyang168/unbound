@@ -6387,7 +6387,7 @@ static void
 process_list_end_transfer(struct auth_xfer* xfr, struct module_env* env)
 {
 	int ixfr_fail = 0;
-	if(1 /* auth load enabled: max-auth-load-threads > 0 */ ) {
+	if(env->cfg->auth_task_threads != 0 /* auth load enabled */ ) {
 		/* Create auth load thread task to process the data. */
 		if(auth_load_add_task_xfr(xfr, env->worker)) {
 			/* Task is created, wait for it to be done. The worker
