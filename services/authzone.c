@@ -99,6 +99,10 @@
 #define NUM_TIMEOUTS_FALLBACK_IXFR 3
 /** number of IXFRs before an AXFR is performed, to consolidate RPZ memory. */
 #define NUM_IXFR_BEFORE_AXFR 5
+/** number of records before polling if the auth-load-thread has to quit.
+ * It polls on the socket, once for this number of processed records, so
+ * it can quit when the signal is sent over the socket. */
+#define NUM_RECORDS_BEFORE_SIGNAL_CHECK 10000
 
 /** pick up nextprobe task to start waiting to perform transfer actions */
 static void xfr_set_timeout(struct auth_xfer* xfr, struct module_env* env,
@@ -5122,7 +5126,7 @@ xfr_apply_ixfr(struct auth_chunk* chunk_list, uint32_t xfr_serial,
 		}
 
 		rr_counter++;
-		if(thr && rr_counter % 10000 == 0) {
+		if(thr && rr_counter % NUM_RECORDS_BEFORE_SIGNAL_CHECK == 0) {
 			if(auth_load_thread_poll_for_quit(thr))
 				return 0;
 		}
@@ -5195,7 +5199,7 @@ xfr_apply_axfr(struct auth_chunk* chunk_list, struct auth_zone* z,
 		}
 
 		rr_counter++;
-		if(thr && rr_counter % 10000 == 0) {
+		if(thr && rr_counter % NUM_RECORDS_BEFORE_SIGNAL_CHECK == 0) {
 			if(auth_load_thread_poll_for_quit(thr))
 				return 0;
 		}
@@ -5288,7 +5292,7 @@ xfr_apply_http(uint8_t* name, size_t namelen, const char* host,
 		/* process this line */
 		pstate.lineno++;
 		chunkline_newline_removal(scratch_buffer);
-		if(thr && pstate.lineno % 10000 == 0) {
+		if(thr && pstate.lineno % NUM_RECORDS_BEFORE_SIGNAL_CHECK == 0) {
 			if(auth_load_thread_poll_for_quit(thr))
 				return 0;
 		}
