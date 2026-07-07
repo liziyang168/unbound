@@ -50,6 +50,16 @@ struct module_env;
 struct auth_load_task;
 
 /**
+ * General information for auth load threads. The number of active threads.
+ */
+struct auth_load_general_info {
+	/** lock on this structure */
+	lock_basic_type lock;
+	/** The number of active auth load threads. */
+	int num_auth_load_threads;
+};
+
+/**
  * The types of notifications that the auth load thread sends around.
  */
 enum auth_load_notification_type {
@@ -158,5 +168,31 @@ int auth_load_add_task_xfr(struct auth_xfer* xfr, struct worker* worker);
 
 /** See if there is a quit signal, true if so. */
 int auth_load_thread_poll_for_quit(struct auth_load_thread* thr);
+
+/**
+ * Create auth load info structure.
+ * @return NULL on failure.
+ */
+struct auth_load_general_info* auth_load_info_create(void);
+
+/**
+ * Delete auth load info structure.
+ * @param auth_load_info: to delete.
+ */
+void auth_load_info_delete(struct auth_load_general_info* auth_load_info);
+
+/**
+ * Grab a new thread from the auth load count.
+ * @param env: with auth_load_info with the active thread count.
+ *	and config file, with configured maximum.
+ * @return false on failure, like too many active, true if successful.
+ */
+int auth_load_info_grab_thread(struct module_env* env);
+
+/**
+ * Release thread from auth load count. It is done.
+ * @param env: with auth_load_info with the active thread count.
+ */
+void auth_load_info_release_thread(struct module_env* env);
 
 #endif /* SERVICES_AUTHLOAD_H */

@@ -6391,15 +6391,20 @@ static void
 process_list_end_transfer(struct auth_xfer* xfr, struct module_env* env)
 {
 	int ixfr_fail = 0;
-	if(env->cfg->auth_task_threads != 0 /* auth load enabled */ ) {
-		/* Create auth load thread task to process the data. */
-		if(auth_load_add_task_xfr(xfr, env->worker)) {
-			/* Task is created, wait for it to be done. The worker
-			 * is signalled with the result. */
-			/* When it is done, the xfr_process_load_end_transfer
-			 * routine is called. */
-			lock_basic_unlock(&xfr->lock);
-			return;
+	if(env->cfg->auth_task_threads != 0 /* auth load enabled */) {
+		if(auth_load_info_grab_thread(env)) {
+			/* Create auth load thread task to process the data. */
+			if(auth_load_add_task_xfr(xfr, env->worker)) {
+				/* Task is created, wait for it to be done. The worker
+				 * is signalled with the result. */
+				/* When it is done, the xfr_process_load_end_transfer
+				 * routine is called. */
+				lock_basic_unlock(&xfr->lock);
+				return;
+			}
+			auth_load_info_release_thread(env);
+		} else {
+			verbose(VERB_ALGO, "Auth load threads at capacity, not creating a new thread");
 		}
 	} else if(xfr_process_chunk_list(xfr, env, &ixfr_fail)) {
 		/* it worked! */

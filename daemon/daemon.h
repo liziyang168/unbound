@@ -62,6 +62,7 @@ struct doq_table;
 struct cookie_secrets;
 struct fast_reload_thread;
 struct fast_reload_printq;
+struct auth_load_general_info;
 
 #include "dnstap/dnstap_config.h"
 #ifdef USE_DNSTAP
@@ -188,6 +189,8 @@ struct daemon {
 	int fast_reload_tcl_has_changes;
 	/** config file name */
 	char* cfgfile;
+	/** Auth load threads, the number of active threads. */
+	struct auth_load_general_info* auth_load_info;
 };
 
 /**

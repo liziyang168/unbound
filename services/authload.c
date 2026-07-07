@@ -672,7 +672,7 @@ worker_auth_load_service_cb(int ATTR_UNUSED(fd), short ATTR_UNUSED(bits),
 	ssize_t ret;
 	struct auth_xfer* xfr;
 	struct auth_chunk* chunk_list;
-	struct module_env* env;
+	struct module_env* env = &thr->task->worker->env;
 	int ixfr_fail;
 
 	log_assert(thr->commpair[0] >= 0);
@@ -719,11 +719,11 @@ worker_auth_load_service_cb(int ATTR_UNUSED(fd), short ATTR_UNUSED(bits),
 		lock_rw_unlock(&thr->task->worker->env.auth_zones->lock);
 		verbose(VERB_ALGO, "auth load: xfr is gone");
 		auth_load_thread_delete(thr);
+		auth_load_info_release_thread(env);
 		return;
 	}
 	lock_basic_lock(&xfr->lock);
 	lock_rw_unlock(&thr->task->worker->env.auth_zones->lock);
-	env = &thr->task->worker->env;
 	ixfr_fail = thr->task->ixfr_fail;
 	if(thr->task->on_http) {
 		chunk_list = thr->task->chunks_first;
@@ -734,6 +734,7 @@ worker_auth_load_service_cb(int ATTR_UNUSED(fd), short ATTR_UNUSED(bits),
 		chunk_list = NULL;
 	}
 	auth_load_thread_delete(thr);
+	auth_load_info_release_thread(env);
 	xfr_process_load_end_transfer(xfr, env, recv_item, ixfr_fail,
 		chunk_list);
 }
@@ -814,4 +815,57 @@ int auth_load_add_task_xfr(struct auth_xfer* xfr, struct worker* worker)
 
 	/* Make wait item */
 	return 0;
+}
+
+struct auth_load_general_info* auth_load_info_create(void)
+{
+	struct auth_load_general_info* auth_load_info =
+		(struct auth_load_general_info*)calloc(1,
+			sizeof(*auth_load_info));
+	if(!auth_load_info) {
+		log_err("malloc failure");
+		return NULL;
+	}
+	lock_basic_init(&auth_load_info->lock);
+	lock_protect(&auth_load_info->lock,
+		&auth_load_info->num_auth_load_threads,
+		sizeof(auth_load_info->num_auth_load_threads));
+	return auth_load_info;
+}
+
+void auth_load_info_delete(struct auth_load_general_info* auth_load_info)
+{
+	if(!auth_load_info)
+		return;
+	lock_basic_destroy(&auth_load_info->lock);
+	free(auth_load_info);
+}
+
+int auth_load_info_grab_thread(struct module_env* env)
+{
+	struct auth_load_general_info* auth_load_info =
+		env->worker->daemon->auth_load_info;
+	struct config_file* cfg = env->cfg;
+	int ret = 0;
+	lock_basic_lock(&auth_load_info->lock);
+	if(auth_load_info->num_auth_load_threads < cfg->auth_task_threads) {
+		ret = 1;
+		auth_load_info->num_auth_load_threads++;
+	}
+	lock_basic_unlock(&auth_load_info->lock);
+	return ret;
+}
+
+void auth_load_info_release_thread(struct module_env* env)
+{
+	struct auth_load_general_info* auth_load_info =
+		env->worker->daemon->auth_load_info;
+	lock_basic_lock(&auth_load_info->lock);
+	if(auth_load_info->num_auth_load_threads == 0) {
+		verbose(VERB_ALGO, "release of auth load thread, but "
+			"num_auth_load_threads not > 0.");
+	} else {
+		auth_load_info->num_auth_load_threads--;
+	}
+	lock_basic_unlock(&auth_load_info->lock);
 }
